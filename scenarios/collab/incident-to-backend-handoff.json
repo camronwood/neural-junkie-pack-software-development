@@ -1,0 +1,12 @@
+{
+  "name": "incident-to-backend-handoff",
+  "description": "IncidentManager hands off a bug to BackendEngineer",
+  "agents": ["@IncidentManager", "@BackendEngineer"],
+  "goal": "Triage a production bug ticket and hand off reproduction steps to BackendEngineer for a fix proposal.",
+  "max_turns": 8,
+  "success_criteria": [
+    "Incident triage summary",
+    "Reproduction or root-cause hypothesis",
+    "Backend fix or next-step proposal"
+  ]
+}

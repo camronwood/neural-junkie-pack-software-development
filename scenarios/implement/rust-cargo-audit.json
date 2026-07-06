@@ -1,0 +1,17 @@
+{
+  "name": "rust-cargo-audit",
+  "description": "RustExpert runs cargo audit on a minimal Rust fixture",
+  "target_agent": "RustExpert",
+  "required_agents": ["RustExpert"],
+  "workspace_fixture": "minimal-rust-crate",
+  "messages": [
+    {
+      "role": "human",
+      "content": "@RustExpert Run cargo audit on this workspace and summarize any findings."
+    }
+  ],
+  "expect": {
+    "agent_responds": true,
+    "tool_used_any": ["cargo_audit", "check_cargo_toml"]
+  }
+}

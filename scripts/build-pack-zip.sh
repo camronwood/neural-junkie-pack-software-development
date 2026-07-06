@@ -8,5 +8,6 @@ ver="$(grep '^version:' "${ROOT}/pack.yaml" | head -1 | awk -F'"' '{print $2}')"
 artifact="${OUT}/${id}-${ver}.zip"
 rm -f "${artifact}"
 (cd "${ROOT}" && zip -r "${artifact}" pack.yaml -x '*.DS_Store')
-[[ -d "${ROOT}/assets" ]] && (cd "${ROOT}" && zip -ur "${artifact}" assets -x '*.DS_Store')
+[[ -d "${ROOT}/assets" ]] && (cd "${ROOT}" && zip -ur "${artifact}" assets -x '*.DS_Store' -x 'assets/mcp/tools/*' -x 'assets/mcp/cmd/*' -x 'assets/mcp/host/*' -x 'assets/mcp/shared/*' -x 'assets/mcp/go.*' -x 'assets/mcp/bin/*-*')
+[[ -d "${ROOT}/scenarios" ]] && (cd "${ROOT}" && zip -ur "${artifact}" scenarios -x '*.DS_Store')
 echo "Wrote ${artifact}"

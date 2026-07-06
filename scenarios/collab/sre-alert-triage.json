@@ -1,0 +1,12 @@
+{
+  "name": "sre-alert-triage",
+  "description": "SRE and Platform specialists triage a Prometheus alert scenario",
+  "agents": ["@SREObservabilityEngineer", "@PlatformEngineer"],
+  "goal": "Review a high-error-rate alert: identify likely service, check pod logs, suggest mitigation.",
+  "max_turns": 6,
+  "success_criteria": [
+    "Mentions alert or error rate",
+    "References logs or pods",
+    "Proposes a mitigation step"
+  ]
+}

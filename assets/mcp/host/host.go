@@ -1,0 +1,208 @@
+package host
+
+import (
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+)
+
+// MCPServerConfig holds configuration for MCP servers.
+type MCPServerConfig struct {
+	Enabled       bool
+	Port          int
+	Name          string
+	Version       string
+	InProcessOnly bool
+}
+
+var defaultPorts = map[string]int{
+	"BACKEND":      8081,
+	"DEVOPS":       8082,
+	"DATABASE":     8083,
+	"FRONTEND":     8084,
+	"SECURITY":     8085,
+	"RUST":         8088,
+	"CODE_REVIEW":  8089,
+	"ARCHITECTURE": 8090,
+	"SRE":          8095,
+	"MOBILE":       8096,
+	"DATA_ML":      8097,
+}
+
+// DefaultPort returns the default HTTP port for an agent type key.
+func DefaultPort(key string) int {
+	return defaultPorts[key]
+}
+
+// NormalizeAgentType maps agent type strings to MCP port config keys.
+func NormalizeAgentType(agentType string) string {
+	key := strings.ToLower(strings.TrimSpace(agentType))
+	key = strings.ReplaceAll(key, "-", "_")
+	return strings.ToUpper(key)
+}
+
+var (
+	mcpPortMu    sync.Mutex
+	mcpPortsUsed = map[int]bool{}
+)
+
+func reserveMCPHTTPPort(port int) bool {
+	mcpPortMu.Lock()
+	defer mcpPortMu.Unlock()
+	if mcpPortsUsed[port] {
+		return false
+	}
+	mcpPortsUsed[port] = true
+	return true
+}
+
+// GetMCPServerConfig returns sidecar MCP configuration (always enabled when started).
+func GetMCPServerConfig(agentType string) *MCPServerConfig {
+	key := NormalizeAgentType(agentType)
+	port := defaultPorts[key]
+	if port == 0 {
+		port = 8081
+	}
+	cfg := &MCPServerConfig{
+		Enabled: true,
+		Port:    port,
+		Name:    fmt.Sprintf("%s-agent-mcp", strings.ToLower(key)),
+		Version: "1.0.0",
+	}
+	if !reserveMCPHTTPPort(port) {
+		cfg.InProcessOnly = true
+	}
+	return cfg
+}
+
+// NewMCPServer creates a new MCP server with common configuration.
+func NewMCPServer(config *MCPServerConfig) (*server.MCPServer, *server.StreamableHTTPServer, error) {
+	if config == nil {
+		return nil, nil, fmt.Errorf("nil MCP config")
+	}
+	if !config.Enabled {
+		return nil, nil, fmt.Errorf("MCP server disabled for %s", config.Name)
+	}
+	mcpServer := server.NewMCPServer(config.Name, config.Version)
+	var httpServer *server.StreamableHTTPServer
+	if !config.InProcessOnly {
+		httpServer = server.NewStreamableHTTPServer(
+			mcpServer,
+			server.WithEndpointPath("/mcp"),
+		)
+		log.Printf("Created MCP server: %s v%s on port %d", config.Name, config.Version, config.Port)
+	}
+	return mcpServer, httpServer, nil
+}
+
+// StartMCPServer starts the MCP server in a goroutine.
+func StartMCPServer(httpServer *server.StreamableHTTPServer, port int) error {
+	if httpServer == nil {
+		return nil
+	}
+	addr := fmt.Sprintf(":%d", port)
+	go func() {
+		log.Printf("Starting MCP server on %s", addr)
+		if err := httpServer.Start(addr); err != nil {
+			log.Printf("MCP server failed to start: %v", err)
+		}
+	}()
+	return nil
+}
+
+// CreateTool creates a standardized MCP tool definition.
+func CreateTool(name, description string, inputSchema mcpgo.ToolInputSchema, handler server.ToolHandlerFunc) mcpgo.Tool {
+	return mcpgo.Tool{
+		Name:        name,
+		Description: description,
+		InputSchema: inputSchema,
+	}
+}
+
+// CreateStringInputSchema creates a simple string input schema.
+func CreateStringInputSchema(paramName, description string) mcpgo.ToolInputSchema {
+	return mcpgo.ToolInputSchema{
+		Type: "object",
+		Properties: map[string]any{
+			paramName: map[string]any{
+				"type":        "string",
+				"description": description,
+			},
+		},
+		Required: []string{paramName},
+	}
+}
+
+// CreateMultiStringInputSchema creates a schema with multiple string parameters.
+func CreateMultiStringInputSchema(params map[string]string) mcpgo.ToolInputSchema {
+	properties := make(map[string]any)
+	required := make([]string, 0, len(params))
+	for name, description := range params {
+		properties[name] = map[string]any{
+			"type":        "string",
+			"description": description,
+		}
+		required = append(required, name)
+	}
+	return mcpgo.ToolInputSchema{
+		Type:       "object",
+		Properties: properties,
+		Required:   required,
+	}
+}
+
+// CreateObjectInputSchema builds a tool schema from property maps and required keys.
+func CreateObjectInputSchema(properties map[string]interface{}, required []string) mcpgo.ToolInputSchema {
+	return mcpgo.ToolInputSchema{
+		Type:       "object",
+		Properties: properties,
+		Required:   required,
+	}
+}
+
+// CreateEmptyInputSchema creates a tool schema with no parameters.
+func CreateEmptyInputSchema() mcpgo.ToolInputSchema {
+	return mcpgo.ToolInputSchema{
+		Type:       "object",
+		Properties: map[string]any{},
+	}
+}
+
+// HandleToolError creates a standardized error response.
+func HandleToolError(err error, toolName string) *mcpgo.CallToolResult {
+	log.Printf("Tool %s error: %v", toolName, err)
+	return &mcpgo.CallToolResult{
+		Content: []mcpgo.Content{
+			mcpgo.TextContent{Type: "text", Text: fmt.Sprintf("Error in %s: %v", toolName, err)},
+		},
+		IsError: true,
+	}
+}
+
+// HandleToolSuccess creates a standardized success response.
+func HandleToolSuccess(result string) *mcpgo.CallToolResult {
+	return &mcpgo.CallToolResult{
+		Content: []mcpgo.Content{
+			mcpgo.TextContent{Type: "text", Text: result},
+		},
+	}
+}
+
+// ValidateToolInput validates required string parameters.
+func ValidateToolInput(request mcpgo.CallToolRequest, requiredParams []string) error {
+	for _, param := range requiredParams {
+		if request.GetString(param, "") == "" {
+			return fmt.Errorf("missing required parameter: %s", param)
+		}
+	}
+	return nil
+}
+
+// MissingBinaryMessage returns a helpful message when an optional CLI tool is not installed.
+func MissingBinaryMessage(binary, installHint string) string {
+	return fmt.Sprintf("%s is not installed or not on PATH. %s", binary, installHint)
+}
