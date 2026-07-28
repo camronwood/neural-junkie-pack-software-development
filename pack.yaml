@@ -1,5 +1,5 @@
 id: software-development
-version: "2.1.0"
+version: "2.2.0"
 title: Software development
 description: Engineering specialists with pack-owned MCP sidecar and Qwen 3.5 models.
 capabilities:
@@ -19,7 +19,6 @@ capability_defs:
       - database
       - frontend
       - security
-      - code-review
       - architecture
       - rust
       - sre
@@ -75,11 +74,6 @@ agents:
   - type: architecture
     name: SoftwareArchitect
     implementation: builtin/architecture
-    compose:
-      tool_model: qwen3.5:9b
-  - type: code-review
-    name: CodeReviewer
-    implementation: builtin/code-review
     compose:
       tool_model: qwen3.5:9b
   - type: database
@@ -144,8 +138,6 @@ expert_presets:
     label: Security
   - slug: architecture
     label: Software Architecture
-  - slug: code-review
-    label: Code Review
   - slug: database
     label: Database
   - slug: rust
@@ -162,7 +154,6 @@ mcp_agents:
   - database
   - frontend
   - security
-  - code-review
   - architecture
   - rust
   - sre
