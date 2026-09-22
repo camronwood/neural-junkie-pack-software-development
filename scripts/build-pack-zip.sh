@@ -21,9 +21,12 @@ fi
 rm -f "${artifact}"
 (cd "${ROOT}" && zip -r "${artifact}" pack.yaml -x '*.DS_Store')
 # Include sd-mcp-server; exclude source trees and platform-suffixed copies (resolver uses the generic name).
-[[ -d "${ROOT}/assets" ]] && (cd "${ROOT}" && zip -ur "${artifact}" assets -x '*.DS_Store' -x 'assets/mcp/tools/*' -x 'assets/mcp/cmd/*' -x 'assets/mcp/host/*' -x 'assets/mcp/shared/*' -x 'assets/mcp/go.*' -x 'assets/mcp/bin/*-*')
+# Exclude platform-suffixed binaries (sd-mcp-server-darwin-arm64, etc.). Do NOT use
+# assets/mcp/bin/*-* — that also matches the generic sd-mcp-server name (has hyphens).
+[[ -d "${ROOT}/assets" ]] && (cd "${ROOT}" && zip -ur "${artifact}" assets -x '*.DS_Store' -x 'assets/mcp/tools/*' -x 'assets/mcp/cmd/*' -x 'assets/mcp/host/*' -x 'assets/mcp/shared/*' -x 'assets/mcp/go.*' -x 'assets/mcp/bin/sd-mcp-server-*')
 [[ -d "${ROOT}/scenarios" ]] && (cd "${ROOT}" && zip -ur "${artifact}" scenarios -x '*.DS_Store')
-if ! unzip -l "${artifact}" | grep -q 'assets/mcp/bin/sd-mcp-server$'; then
+# Avoid grep -q under pipefail: early exit SIGPIPEs unzip and fails the check.
+if ! unzip -l "${artifact}" | grep -E 'assets/mcp/bin/sd-mcp-server([[:space:]]|$)' >/dev/null; then
   echo "pack zip missing assets/mcp/bin/sd-mcp-server" >&2
   exit 1
 fi
