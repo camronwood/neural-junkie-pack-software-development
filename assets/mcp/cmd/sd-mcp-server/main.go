@@ -11,7 +11,6 @@ import (
 
 	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/architecture"
 	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/backend"
-	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/codereview"
 	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/database"
 	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/dataml"
 	"github.com/camronwood/neural-junkie-pack-software-development/mcp/tools/devops"
@@ -61,7 +60,7 @@ func main() {
 	start("devops", func() (mcpStarter, error) { return devops.NewDevOpsMCP() })
 	start("database", func() (mcpStarter, error) { return database.NewDatabaseMCP() })
 	start("security", func() (mcpStarter, error) { return security.NewSecurityMCP() })
-	start("code-review", func() (mcpStarter, error) { return codereview.NewCodeReviewMCP() })
+	// code-review MCP retired (D5) — use domain specialists for review tools
 	start("architecture", func() (mcpStarter, error) { return architecture.NewArchitectureMCP() })
 	start("rust", func() (mcpStarter, error) { return rust.NewRustMCP() })
 	start("sre", func() (mcpStarter, error) { return observability.NewObservabilityMCP() })
@@ -80,7 +79,7 @@ func main() {
 
 func defaultAgents() []string {
 	return []string{
-		"backend", "frontend", "devops", "database", "security", "code-review", "architecture",
+		"backend", "frontend", "devops", "database", "security", "architecture",
 		"rust", "sre", "mobile", "data-ml",
 	}
 }
